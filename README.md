@@ -1,33 +1,14 @@
-## Please Switch to the goBILDA-Odometry-Driver Branch to use this repository. The master branch contains only the FTC SDK.
-
 ## NOTICE
 
 This repository contains the public FTC SDK for the INTO THE DEEP (2024-2025) competition season.
 
 ## Welcome!
-This is a fork of the offical FTC SDK for the 24-25 season. It includes the source code for the FTC SDK, as well as the driver for the goBILDA Pinpoint Odometry Computer: https://www.gobilda.com/pinpoint-odometry-computer-imu-sensor-fusion-for-2-wheel-odometry/
-
-This repo includes the FTC Driver, and example Opmodes showing how to use the goBILDA® Pinpoint Odometry Computer.
-The goBILDA Odometry Computer is a device designed to solve the Pose Exponential calculation
-commonly associated with Dead Wheel Odometry systems. It reads two encoders, and an integrated
-system of sensors to determine the robot's current heading, X position, and Y position.
-
-## How to use? 
-If you are already an Android Studio team, and are using git, you can add this repo as a git remote, and this will allow you to easily pull just the three files which this repo adds to the SDK. GoBildaPinpointDriver, SensorGoBildaPinpointExample, and Pose2D. You can add a remote to Android Studio by going to Git, then Manage Remotes in the navigation bar. Once you've added this Remote, click on the branch icon near the name of your curent project and find the new remote. There should be a branch called "goBILDA-Odometry-Driver", select that, and select "Pull into (yourbranch) using merge". There may be a conflict with the readme file, just accept your's. And you'll be off to the races!
-
-If you do not already have a github project for your team/season, you can clone this repository. Just make sure to note that only the branch titled "goBILDA-Odometry-Driver" has the driver and example files.
-
-If you would like to just download the driver files and example code, you can find them here: just click the download button in the top right and put those three files in your teamcode folder.
-
-### Direct link to driver and example files:
-https://github.com/goBILDA-Official/goBILDA-Pinpoint-Odometry-Computer-FTC-Driver/tree/goBILDA-Odometry-Driver/TeamCode/src/main/java/org/firstinspires/ftc/teamcode
-
+This GitHub repository contains the source code that is used to build an Android app to control a *FIRST* Tech Challenge competition robot.  To use this SDK, download/clone the entire project to your local computer.
 
 ## Requirements
 To use this Android Studio project, you will need Android Studio 2021.2 (codename Chipmunk) or later.
 
 To program your robot in Blocks or OnBot Java, you do not need Android Studio.
-
 
 ## Getting Started
 If you are new to robotics or new to the *FIRST* Tech Challenge, then you should consider reviewing the [FTC Blocks Tutorial](https://ftc-docs.firstinspires.org/programming_resources/blocks/Blocks-Tutorial.html) to get familiar with how to use the control system:
@@ -77,24 +58,6 @@ Samples Folder: &nbsp;&nbsp; [/FtcRobotController/src/main/java/org/firstinspire
 The readme.md file located in the [/TeamCode/src/main/java/org/firstinspires/ftc/teamcode](TeamCode/src/main/java/org/firstinspires/ftc/teamcode) folder contains an explanation of the sample naming convention, and instructions on how to copy them to your own project space.
 
 # Release Information
-
-## Version 10.1 (20240919-122750)
-
-### Enhancements
-* Adds new OpenCV-based `VisionProcessor`s (which may be attached to a VisionPortal in either Java or Blocks) to help teams implement color processing via computer vision in the INTO THE DEEP game
-  * `ColorBlobLocatorProcessor` implements OpenCV color "blob" detection. A new sample program `ConceptVisionColorLocator` demonstrates its use.
-    * A choice is offered between pre-defined color ranges, or creating a custom one in RGB, HSV, or YCrCb color space
-    * The ability is provided to restrict detection to a specified Region of Interest on the screen
-    * Functions for applying erosion / dilation morphing to the threshold mask are provided
-    * Functions for sorting and filtering the returned data are provided
-  * `PredominantColorProcessor` allows using a region of the camera as a "long range color sensor" to determine the predominant color of that region. A new sample program `ConceptVisionColorSensor` demonstrates its use.
-    * The determined predominant color is selected from a discrete set of color "swatches", similar to the MINDSTORMS NXT color sensor
-  * Documentation on this Color Processing feature can be found here: https://ftc-docs.firstinspires.org/color-processing
-* Added Blocks sample programs for color sensors: RobotAutoDriveToLine and SensorColor.
-* Updated Self-Inspect to identify mismatched RC/DS software versions as a "caution" rather than a "failure."
-
-### Bug Fixes
-* Fixes [AngularVelocity conversion regression](https://github.com/FIRST-Tech-Challenge/FtcRobotController/issues/1070)
 
 ## Version 10.0  (20240828-111152)
 
@@ -506,7 +469,7 @@ This is a bug fix only release to address the following four issues.
 * Fixes [issue #260](https://github.com/FIRST-Tech-Challenge/FtcRobotController/issues/260) Blocks can't call java method that has a VuforiaLocalizer parameter.
     * Blocks now has a block labeled VuforiaFreightFrenzy.getVuforiaLocalizer for this.
 * Added a page to manage the TensorFlow Lite models in /sdcard/FIRST/tflitemodels. To get to the TFLite Models page:
-    * You can click on the link at the bottom of the Manage page.
+    * You can click on the link at the bottom of the the Manage page.
     * You can click on the link at the upper-right the Blocks project page.
 * Fixes logspam when `isBusy()` is called on a motor not in RTP mode.
 * Hides the "RC Password" item on the inspection screen for phone-based Robot Controllers. (It is only applicable for Control Hubs).
@@ -1191,7 +1154,7 @@ Known issues:
 
 This version of the software provides support for the REV Robotics Expansion Hub.  This version also includes improvements in the USB communication layer in an effort to enhance system resiliency.  If you were using a 2.x version of the software previously, updating to version 3.1 requires that you also update your Driver Station software in addition to updating the Robot Controller software.
 
-Also note that in version 3.10 software, the setMaxSpeed and getMaxSpeed methods are no longer available (not deprecated, they have been removed from the SDK). Also note that the new 3.x software incorporates motor profiles that a user can select as he/she configures the robot.
+Also note that in version 3.10 software, the setMaxSpeed and getMaxSpeed methods are no longer available (not deprecated, they have been removed from the SDK). Also note that the the new 3.x software incorporates motor profiles that a user can select as he/she configures the robot.
 
 Changes include:
  * Blocks changes
