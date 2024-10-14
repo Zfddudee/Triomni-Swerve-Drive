@@ -5,6 +5,10 @@ This repository contains the public FTC SDK for the INTO THE DEEP (2024-2025) co
 ## Welcome!
 This GitHub repository contains the source code that is used to build an Android app to control a *FIRST* Tech Challenge competition robot.  To use this SDK, download/clone the entire project to your local computer.
 
+### User guide:
+We also have a PDF user guide that goes over calibration, tuning, and common issues which can be found here:
+https://www.gobilda.com/content/user_manuals/3110-0002-0001_user-guide.pdf
+
 ## Requirements
 To use this Android Studio project, you will need Android Studio 2021.2 (codename Chipmunk) or later.
 
