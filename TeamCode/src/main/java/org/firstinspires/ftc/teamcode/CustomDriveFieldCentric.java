@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -7,6 +8,8 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
+
+import java.util.List;
 
 //sets the teleop name visable on the driver station and sets it as a teleop program
 @TeleOp(name = "Field Centric Drive")
@@ -27,7 +30,9 @@ public class CustomDriveFieldCentric extends OpMode {
     double flipPoint = 110;
     double powerMult = 0.5;
     double oldTime = 0;
-    boolean isFlipped = false;
+    boolean latch = false;
+    double lastHeading = 0;
+    double holdDelta = 0;
 
 
     //function for when you press init but does not loop
@@ -56,6 +61,12 @@ public class CustomDriveFieldCentric extends OpMode {
         steeringMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         steeringMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        List<LynxModule> allHubs = hardwareMap.getAll(LynxModule.class);
+
+        for (LynxModule hub : allHubs) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
+
         //telemetry to state robot has initialized
         telemetry.addLine("Initialized");
         telemetry.update();
@@ -72,42 +83,52 @@ public class CustomDriveFieldCentric extends OpMode {
         double frequency = 1/loopTime;
         oldTime = newTime;
 
-        //variables to store the joystick positions
+        //variables for the heading of the robot in degrees then in radians
         double botHeading = odo.getHeading(UnnormalizedAngleUnit.DEGREES);
-        double headingRad = -Math.toRadians(botHeading);
+        double botHeadingUsable = (botHeading + 360) %360;
+        double headingRad = Math.toRadians(botHeading);
+        double headingVel = Math.abs(odo.getHeadingVelocity());
+
+        //variables to store the joystick positions
         double y = -gamepad1.left_stick_y;
         double x = -gamepad1.left_stick_x;
         double a = -gamepad1.right_stick_x;
-        double rotX = x * Math.cos(-headingRad) - y * Math.sin(-headingRad);
-        double rotY = x * Math.sin(-headingRad) + y * Math.cos(-headingRad);
+        //rotated x and y variables to allow for field centric driving
+        double rotX = x * Math.cos(headingRad) - y * Math.sin(headingRad);
+        double rotY = x * Math.sin(headingRad) + y * Math.cos(headingRad);
 
-        //power for the wheels based off the magnitude of the joysticks movement
+        //power for the wheels based off the magnitude of the joysticks movement then making sure it doesnt go above 1
         double power = Math.sqrt((x * x)+(y * y));
         if(power > 1) power = 1;
 
-        //angle of the joystick calculation
+        //angle of the joystick calculation and then normalize angle of joystick to be in 0 to 360 degrees
         if(x != 0 || y != 0) angle = Math.toDegrees(Math.atan2(rotX, rotY));
         if (angle < 0) angle += 360;
+
+        //if joysticks are sitting still set power for steering motor to 0 to conserve power
         if (x <= 0.05 && y <= 0.05 &&  ticksToMove < 15) steeringMotor.setPower(0);
-        if (a <= 0.05){
-            double lastHeading = botHeading;
-            if(lastHeading < botHeading){
 
-            } else if (lastHeading > botHeading) {
-
-
+        //TODO: tune heading velocity constraint, strenght and fix constant spinning
+        //correction so if not moving right joystick it holds heading to account for drift
+        if (Math.abs(a) <= 0.05){
+            if(!latch && headingVel < 1){
+                lastHeading = botHeadingUsable;
+                latch = true;
+            }else if(latch){
+                holdDelta = (lastHeading - botHeadingUsable + 540) % 360 - 180;
+                if(Math.abs(holdDelta) > 2) a = holdDelta * Constants.turningGainP;
             }
-        }
+        }else latch = false;
 
         //current swerve module angle calculation
-        double currentWheelAngle = ((((steeringMotor.getCurrentPosition() / (ticksPerRev * gearRatio)) * 360) + 180) % 360) -180;
-
         double actualWheelAngle = (steeringMotor.getCurrentPosition() / (ticksPerRev * gearRatio)) * 360;
-        actualWheelAngle %= 360;
-        if(actualWheelAngle < 0) actualWheelAngle += 360;
 
+        //current swerve module angle normalized to -180 to 180
+        double currentWheelAngle = ((actualWheelAngle + 180) % 360) -180;
         currentWheelAngle %= 180;
-        double wheelAngle = ((steeringMotor.getCurrentPosition() / (ticksPerRev * gearRatio)) * 360) + wheelFlip;
+
+        //current swerve module angle as seen by robot with flip correction in a -360 to 360
+        double wheelAngle = actualWheelAngle + wheelFlip;
         wheelAngle %= 360;
 
 
@@ -117,7 +138,6 @@ public class CustomDriveFieldCentric extends OpMode {
         wheelFlip %= 360;
 
         //if difference in angles is too large flips direction of wheels so the turning is more efficient
-
         if(Math.abs(angleDelta) >= flipPoint){
             wheelFlip += 180 * Math.signum(angleDelta);
             powerDir *= -1;
@@ -137,68 +157,36 @@ public class CustomDriveFieldCentric extends OpMode {
         steeringMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         steeringMotor.setPower(steeringPower);
 
-        //sets drive power on wheels
-//        driveA.setPower(power * powerDir * powerMult);
-//        driveB.setPower(power * powerDir * powerMult);
-//        driveC.setPower(power * powerDir * powerMult);
-        boolean inBackSide = actualWheelAngle > 150 && actualWheelAngle < 330;
-
-        if (inBackSide && !isFlipped){
-            a *= -1;
-            isFlipped = true;
-        }
-        else if (!inBackSide && isFlipped){
-            a *= -1;
-            isFlipped = false;
-        }
-//        boolean isFlippedPhysically = ((int)(Math.floor(actualWheelAngle / 180))) % 2 != 0;
-// Flip turn input if modules are reversed
-//        if (isFlippedPhysically) a *= -1;
+        //sets drive power on wheels depending on the direction that the swerve mdodules are facing to account for the turning
         //2
-        if(currentWheelAngle > 30 && currentWheelAngle <= 90 || currentWheelAngle < -90 && currentWheelAngle >= -150){
-            driveA.setPower((power * powerDir + a) * Constants.powerMult); //
-            driveB.setPower((power * powerDir - a) * Constants.powerMult); //
-            driveC.setPower((power * powerDir) * Constants.powerMult);
-        }//3
-        else if (currentWheelAngle > 90 && currentWheelAngle <= 150 || currentWheelAngle < -30 && currentWheelAngle >= -90){
-            driveA.setPower((power * powerDir - a) * Constants.powerMult); //
-            driveB.setPower(power * powerDir * Constants.powerMult);
-            driveC.setPower((power * powerDir + a) * Constants.powerMult); //
-        }//1
-        else{
-            driveA.setPower((power * powerDir) * Constants.powerMult);
-            driveB.setPower((power * powerDir + a) * Constants.powerMult); //
-            driveC.setPower((power * powerDir - a) * Constants.powerMult); //
+        if(currentWheelAngle > 30 && currentWheelAngle <= 90){
+            driveA.setPower((power * powerDir - a) * powerMult); //
+            driveB.setPower((power * powerDir + a) * powerMult); //
+            driveC.setPower((power * powerDir) * powerMult);
         }
-//        //2
-//        if(currentWheelAngle > 30 && currentWheelAngle <= 90){
-//            driveA.setPower((power * powerDir - a) * powerMult); //
-//            driveB.setPower((power * powerDir + a) * powerMult); //
-//            driveC.setPower((power * powerDir) * powerMult);
-//        }
-//        else if(currentWheelAngle < -90 && currentWheelAngle >= -150){
-//            driveA.setPower((power * powerDir + a) * powerMult); //
-//            driveB.setPower((power * powerDir - a) * powerMult); //
-//            driveC.setPower((power * powerDir) * powerMult);
-//        }//3
-//        else if (currentWheelAngle > 90 && currentWheelAngle <= 150){
-//            driveA.setPower((power * powerDir - a) * powerMult); //
-//            driveB.setPower(power * powerDir * powerMult);
-//            driveC.setPower((power * powerDir + a) * powerMult); //
-//        }else if(currentWheelAngle < -30 && currentWheelAngle >= -90){
-//            driveA.setPower((power * powerDir + a) * powerMult); //
-//            driveB.setPower(power * powerDir * powerMult);
-//            driveC.setPower((power * powerDir - a) * powerMult); //
-//        }//1
-//        else if(currentWheelAngle >= -30 && currentWheelAngle <= 30){
-//            driveA.setPower((power * powerDir) * powerMult);
-//            driveB.setPower((power * powerDir + a) * powerMult); //
-//            driveC.setPower((power * powerDir - a) * powerMult); //
-//        }else{
-//            driveA.setPower((power * powerDir) * powerMult);
-//            driveB.setPower((power * powerDir - a) * powerMult); //
-//            driveC.setPower((power * powerDir + a) * powerMult); //
-//        }
+        else if(currentWheelAngle <= -90 && currentWheelAngle > -150){
+            driveA.setPower((power * powerDir + a) * powerMult); //
+            driveB.setPower((power * powerDir - a) * powerMult); //
+            driveC.setPower((power * powerDir) * powerMult);
+        }//3
+        else if (currentWheelAngle > 90 && currentWheelAngle <= 150){
+            driveA.setPower((power * powerDir - a) * powerMult); //
+            driveB.setPower(power * powerDir * powerMult);
+            driveC.setPower((power * powerDir + a) * powerMult); //
+        }else if(currentWheelAngle <= -30 && currentWheelAngle > -90){
+            driveA.setPower((power * powerDir + a) * powerMult); //
+            driveB.setPower(power * powerDir * powerMult);
+            driveC.setPower((power * powerDir - a) * powerMult); //
+        }//1
+        else if(currentWheelAngle > -30 && currentWheelAngle <= 30){
+            driveA.setPower((power * powerDir) * powerMult);
+            driveB.setPower((power * powerDir + a) * powerMult); //
+            driveC.setPower((power * powerDir - a) * powerMult); //
+        }else{
+            driveA.setPower((power * powerDir) * powerMult);
+            driveB.setPower((power * powerDir - a) * powerMult); //
+            driveC.setPower((power * powerDir + a) * powerMult); //
+        }
 
         //stops the wheels from turning for testing purposes
         if(gamepad1.a) {
@@ -209,30 +197,19 @@ public class CustomDriveFieldCentric extends OpMode {
             steeringPower = 1;
             powerMult = 0.5;
         }
-        if(gamepad1.x) {
-            steeringMotor.setTargetPosition(0);
-            steeringMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            steeringMotor.setPower(steeringPower);
-        }
-        if(gamepad1.y)powerMult = 0;
 
         //telemetry read outs on screen
-//        telemetry.addData("Wheel Flip", wheelFlip);
-//        telemetry.addData("Ticks", steeringMotor.getCurrentPosition());
-//        telemetry.addData("Ticks to move", ticksToMove);
-
-        telemetry.addData("Heading", botHeading);
-        telemetry.addData("Angle", angle);
-        telemetry.addData("Actual Wheel Angle:", actualWheelAngle);
-        telemetry.addData("Current Wheel Angle:", currentWheelAngle);
-        telemetry.addData("Wheel Angle:", wheelAngle);
-        telemetry.addData("Angle delta:", angleDelta);
-        telemetry.addData("Right:", (power * powerDir - a));
-        telemetry.addData("Left:", (power * powerDir + a));
-        telemetry.addData("isFLipped:", isFlipped);
+        telemetry.addData("Heading", botHeadingUsable);
+//        telemetry.addData("Angle", angle);
+//        telemetry.addData("Actual Wheel Angle:", actualWheelAngle);
+//        telemetry.addData("Current Wheel Angle:", currentWheelAngle);
+//        telemetry.addData("Wheel Angle:", wheelAngle);
+//        telemetry.addData("Angle delta:", angleDelta);
+        telemetry.addData("last Heading:", lastHeading);
+        telemetry.addData("Hold Delta:", holdDelta);
         telemetry.addData("a:", a);
+        telemetry.addData("Heading Velocity:", headingVel);
         telemetry.addData("Update Time:", frequency);
-
         telemetry.update();
     }
 }
