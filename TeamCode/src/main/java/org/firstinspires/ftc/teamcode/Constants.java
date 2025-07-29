@@ -9,4 +9,5 @@ public class Constants {
     public static double flipPoint = 110;
     public static double powerMult = 1;
     public static double turningGainP = 0.05;
+    public static double driveToPointGainP = 0.05;
 }

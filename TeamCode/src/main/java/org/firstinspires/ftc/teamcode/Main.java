@@ -35,9 +35,9 @@ public class Main extends OpMode {
 
         if(Math.abs(gamepad1.right_stick_x) > 0.05) functions.Drive(x,y,a,-1);
         else if(gamepad1.dpad_up) functions.Drive(x,y,a,0);
-        else if(gamepad1.dpad_right) functions.Drive(x,y,a,90);
+        else if(gamepad1.dpad_left) functions.Drive(x,y,a,90);
         else if(gamepad1.dpad_down) functions.Drive(x,y,a,180);
-        else if(gamepad1.dpad_left) functions.Drive(x,y,a,270);
+        else if(gamepad1.dpad_right) functions.Drive(x,y,a,270);
                 //telemetry read outs on screen
 //        telemetry.addData("Heading", botHeading);
         telemetry.addData("Heading", functions.botHeadingUsable);

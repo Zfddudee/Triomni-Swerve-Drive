@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.icu.number.Precision;
+
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -75,12 +77,15 @@ public class Functions {
         return frequency;
     }
 
+    public double normalizeTo180 (double angle) {
+        return ((angle + 540) % 360) - 180;
+    }
     public void Drive(double x, double y, double a, double heading) {
         //updates pinpoint
         odo.update();
 
         double botHeading = odo.getHeading(UnnormalizedAngleUnit.DEGREES);
-        botHeadingUsable = (botHeading + 360) %360;
+        botHeadingUsable = (botHeading + 360) % 360;
         double headingRad = Math.toRadians(botHeading);
         headingVel = Math.abs(odo.getHeadingVelocity());
 
@@ -102,31 +107,29 @@ public class Functions {
         //TODO: tune heading velocity constraint, strenght and fix constant spinning
         //correction so if not moving right joystick it holds heading to account for drift
         if (Math.abs(a) <= 0.05){
-            if(!latch && headingVel < 1){
+            if(!latch && headingVel < 0.2 * Constants.powerMult){
                 lastHeading = botHeadingUsable;
                 latch = true;
             }else if(latch){
                 if(heading != -1) lastHeading = heading;
-                holdDelta = (lastHeading - botHeadingUsable + 540) % 360 - 180;
+                holdDelta = normalizeTo180(lastHeading - botHeadingUsable);
                 if(Math.abs(holdDelta) > 2) a = holdDelta * Constants.turningGainP;
             }
         }else latch = false;
 
         //current swerve module angle calculation
-        double actualWheelAngle = (steeringMotor.getCurrentPosition() / (Constants.ticksPerRev * Constants.gearRatio)) * 360;
+        double unnormalizedWheelAngle = (steeringMotor.getCurrentPosition() / (Constants.ticksPerRev * Constants.gearRatio)) * 360;
 
         //current swerve module angle normalized to -180 to 180
-        double currentWheelAngle = ((actualWheelAngle + 180) % 360) -180;
-        currentWheelAngle %= 180;
+        double currentWheelAngle = normalizeTo180(unnormalizedWheelAngle);
 
         //current swerve module angle as seen by robot with flip correction in a -360 to 360
-        double wheelAngle = actualWheelAngle + wheelFlip;
-        wheelAngle %= 360;
+        double flippedWheelAngle = unnormalizedWheelAngle + wheelFlip;
+        flippedWheelAngle %= 360;
 
 
         //difference between current wheel angle and target wheel angle
-        double angleDelta = angle - wheelAngle;
-        angleDelta = ((angleDelta + 540) % 360) - 180;
+        double angleDelta = normalizeTo180(angle - flippedWheelAngle);
         wheelFlip %= 360;
 
         //if difference in angles is too large flips direction of wheels so the turning is more efficient
@@ -136,9 +139,10 @@ public class Functions {
         }
 
         //re-calculates the wheel angle and delta after the corrections
-        wheelAngle = ((steeringMotor.getCurrentPosition() / (Constants.ticksPerRev * Constants.gearRatio)) * 360) + wheelFlip;
-        wheelAngle %= 360;
-        angleDelta = ((angleDelta + 540) % 360) - 180;
+        flippedWheelAngle = ((steeringMotor.getCurrentPosition() / (Constants.ticksPerRev * Constants.gearRatio)) * 360) + wheelFlip;
+        flippedWheelAngle %= 360;
+
+        angleDelta = normalizeTo180(angle - flippedWheelAngle);
 
         //calculates the target motor position to turn the wheels
         double targetPos = (angleDelta / 360) * Constants.ticksPerRev * Constants.gearRatio;
@@ -149,7 +153,10 @@ public class Functions {
         steeringMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         steeringMotor.setPower(steeringPower);
 
-        //sets drive power on wheels depending on the direction that the swerve mdodules are facing to account for the turning
+        double leftWheel = (power * powerDir + a) * Constants.powerMult;
+        double rightWheel = (power * powerDir - a) * Constants.powerMult;
+        double middleWheel = (power * powerDir) * Constants.powerMult;
+        //sets drive power on wheels depending on the direction that the swerve modules are facing to account for the turning
         //2
         if(currentWheelAngle > 30 && currentWheelAngle <= 90){
             driveA.setPower((power * powerDir - a) * Constants.powerMult); //
@@ -179,6 +186,16 @@ public class Functions {
             driveB.setPower((power * powerDir - a) * Constants.powerMult); //
             driveC.setPower((power * powerDir + a) * Constants.powerMult); //
         }
+    }
+
+    public void driveTo(double x, double y, double heading, double endSpeed, double precision){
+        double curX = odo.getPosX();
+        double curY = odo.getPosY();
+        double xDelta = x - curX;
+        double yDelta = y - curY;
+        double power = Math.sqrt((xDelta * xDelta)+(yDelta * yDelta));
+
+        Drive(x,y,0,heading);
     }
 }
 
