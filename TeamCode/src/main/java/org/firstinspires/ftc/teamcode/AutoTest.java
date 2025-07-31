@@ -1,10 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-
-import org.firstinspires.ftc.robotcore.external.Const;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 @Autonomous(name = "AutoTest")
 public class AutoTest extends OpMode {
@@ -16,12 +12,16 @@ public class AutoTest extends OpMode {
     public void init() {
         //initializing all hardware
         functions.mapHardware(hardwareMap);
+        functions.newPoint(10,10,0);
+        functions.newPoint(0,0,0);
+
     }
 
     @Override
     public void loop() {
         functions.odo.update();
-       functions.driveTo(10,10,0,0.5);
+        functions.followPath();
+
        if(gamepad1.a) Constants.powerMult = 0;
        if(gamepad1.b) Constants.powerMult = 0.3;
 

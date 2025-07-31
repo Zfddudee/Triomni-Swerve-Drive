@@ -1,15 +1,11 @@
 package org.firstinspires.ftc.teamcode;
 
-import android.icu.number.Precision;
-
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 
-import org.firstinspires.ftc.robotcore.external.Const;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 
@@ -200,7 +196,37 @@ public class Functions {
             driveC.setPower(leftWheel); //
         }
     }
-    public void driveTo(double x, double y, double heading, double precision){
+
+    public static class PathPoint {
+        public double x, y, heading, precision;
+
+        public PathPoint(double x, double y, double heading) {
+            this.x = x;
+            this.y = y;
+            this.heading = heading;
+            this.precision = 0.5;
+        }
+        public PathPoint(double x, double y, double heading, double precision) {
+            this.x = x;
+            this.y = y;
+            this.heading = heading;
+            this.precision = precision;
+        }
+    }
+    List<PathPoint> points = new ArrayList<>();
+
+    public void newPoint(double x, double y, double heading){
+        points.add(new PathPoint(x, y, heading));
+    }
+    int currentPointIndex = 0;
+    public void followPath(){
+        PathPoint currentPoint = points.get(currentPointIndex);
+        double x = currentPoint.x;
+        double y = currentPoint.y;
+        double heading = currentPoint.heading;
+        double precision = currentPoint.precision;
+
+
         double curX = odo.getPosX(DistanceUnit.INCH);
         double curY = odo.getPosY(DistanceUnit.INCH);
 
@@ -217,6 +243,7 @@ public class Functions {
         double yOutput = (dy/distance) * speed;
 
         if(distance > precision) Drive(xOutput, yOutput, 0, heading);
+        else if(currentPointIndex < points.size()) currentPointIndex++;
         else recenterModules();
     }
 }
