@@ -104,7 +104,7 @@ public class Functions {
         //if joysticks are sitting still set power for steering motor to 0 to conserve power
         if (x <= 0.05 && y <= 0.05 &&  ticksToMove < 15) steeringMotor.setPower(0);
 
-        //TODO: tune heading velocity constraint, strenght and fix constant spinning
+        //TODO: tune heading velocity constraint, strength and fix constant spinning
         //correction so if not moving right joystick it holds heading to account for drift
         if (Math.abs(a) <= 0.05){
             if(!latch && headingVel < 0.2 * Constants.powerMult){
@@ -159,32 +159,32 @@ public class Functions {
         //sets drive power on wheels depending on the direction that the swerve modules are facing to account for the turning
         //2
         if(currentWheelAngle > 30 && currentWheelAngle <= 90){
-            driveA.setPower((power * powerDir - a) * Constants.powerMult); //
-            driveB.setPower((power * powerDir + a) * Constants.powerMult); //
-            driveC.setPower((power * powerDir) * Constants.powerMult);
+            driveA.setPower(rightWheel); //
+            driveB.setPower(leftWheel); //
+            driveC.setPower(middleWheel);
         }
         else if(currentWheelAngle <= -90 && currentWheelAngle > -150){
-            driveA.setPower((power * powerDir + a) * Constants.powerMult); //
-            driveB.setPower((power * powerDir - a) * Constants.powerMult); //
-            driveC.setPower((power * powerDir) * Constants.powerMult);
+            driveA.setPower(leftWheel); //
+            driveB.setPower(rightWheel); //
+            driveC.setPower(middleWheel);
         }//3
         else if (currentWheelAngle > 90 && currentWheelAngle <= 150){
-            driveA.setPower((power * powerDir - a) * Constants.powerMult); //
-            driveB.setPower(power * powerDir * Constants.powerMult);
-            driveC.setPower((power * powerDir + a) * Constants.powerMult); //
+            driveA.setPower(rightWheel); //
+            driveB.setPower(middleWheel);
+            driveC.setPower(leftWheel); //
         }else if(currentWheelAngle <= -30 && currentWheelAngle > -90){
-            driveA.setPower((power * powerDir + a) * Constants.powerMult); //
-            driveB.setPower(power * powerDir * Constants.powerMult);
-            driveC.setPower((power * powerDir - a) * Constants.powerMult); //
+            driveA.setPower(leftWheel); //
+            driveB.setPower(middleWheel);
+            driveC.setPower(rightWheel); //
         }//1
         else if(currentWheelAngle > -30 && currentWheelAngle <= 30){
-            driveA.setPower((power * powerDir) * Constants.powerMult);
-            driveB.setPower((power * powerDir + a) * Constants.powerMult); //
-            driveC.setPower((power * powerDir - a) * Constants.powerMult); //
+            driveA.setPower(middleWheel);
+            driveB.setPower(leftWheel); //
+            driveC.setPower(rightWheel); //
         }else{
-            driveA.setPower((power * powerDir) * Constants.powerMult);
-            driveB.setPower((power * powerDir - a) * Constants.powerMult); //
-            driveC.setPower((power * powerDir + a) * Constants.powerMult); //
+            driveA.setPower(middleWheel);
+            driveB.setPower(rightWheel); //
+            driveC.setPower(leftWheel); //
         }
     }
 
