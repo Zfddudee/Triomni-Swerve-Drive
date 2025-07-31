@@ -13,6 +13,7 @@ import org.firstinspires.ftc.robotcore.external.Const;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 
+import java.util.ArrayList;
 import java.util.List;
 
 //sets the teleop name visable on the driver station and sets it as a teleop program
@@ -69,6 +70,12 @@ public class Functions {
         }
     }
 
+    public double getX(){
+        return odo.getPosX(DistanceUnit.INCH);
+    }
+    public double getY(){
+        return -odo.getPosY(DistanceUnit.INCH);
+    }
     public double getLoopTime(double newTime){ //input getRunTime() function to this
         //calculation to get code loop times
         double loopTime = newTime-oldTime;
@@ -79,6 +86,12 @@ public class Functions {
 
     public double normalizeTo180 (double angle) {
         return ((angle + 540) % 360) - 180;
+    }
+
+    public void recenterModules(){
+        steeringMotor.setTargetPosition(0);
+        steeringMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        steeringMotor.setPower(steeringPower);
     }
     public void Drive(double x, double y, double a, double heading) {
         //updates pinpoint
@@ -187,15 +200,24 @@ public class Functions {
             driveC.setPower(leftWheel); //
         }
     }
+    public void driveTo(double x, double y, double heading, double precision){
+        double curX = odo.getPosX(DistanceUnit.INCH);
+        double curY = odo.getPosY(DistanceUnit.INCH);
 
-    public void driveTo(double x, double y, double heading, double endSpeed, double precision){
-        double curX = odo.getPosX();
-        double curY = odo.getPosY();
-        double xDelta = x - curX;
-        double yDelta = y - curY;
-        double power = Math.sqrt((xDelta * xDelta)+(yDelta * yDelta));
+        double driveX = -curY;
+        double driveY = curX;
 
-        Drive(x,y,0,heading);
+        double dx = x - driveX;
+        double dy = y - driveY;
+
+        double distance = Math.sqrt((dx * dx)+(dy * dy));
+        double speed = Math.min(distance * Constants.driveToPointGainP, 1.0); // Speed factor, proportional to distance
+
+        double xOutput = (-dx/distance) * speed;
+        double yOutput = (dy/distance) * speed;
+
+        if(distance > precision) Drive(xOutput, yOutput, 0, heading);
+        else recenterModules();
     }
 }
 
