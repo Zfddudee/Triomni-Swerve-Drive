@@ -204,7 +204,7 @@ public class Functions {
             this.x = x;
             this.y = y;
             this.heading = heading;
-            this.precision = 0.5;
+            this.precision = 1;
         }
         public PathPoint(double x, double y, double heading, double precision) {
             this.x = x;
@@ -219,7 +219,12 @@ public class Functions {
         points.add(new PathPoint(x, y, heading));
     }
     int currentPointIndex = 0;
-    public void followPath(){
+    double p = 0;
+    double i = 0;
+    double d = 0;
+    double lastTime = 0;
+    double lastError = 0;
+    public void followPath(double time){
         PathPoint currentPoint = points.get(currentPointIndex);
         double x = currentPoint.x;
         double y = currentPoint.y;
@@ -235,15 +240,23 @@ public class Functions {
 
         double dx = x - driveX;
         double dy = y - driveY;
+        double dt = time - oldTime;
 
-        double distance = Math.sqrt((dx * dx)+(dy * dy));
-        double speed = Math.min(distance * Constants.driveToPointGainP, 1.0); // Speed factor, proportional to distance
+        double error = Math.sqrt((dx * dx)+(dy * dy));
 
-        double xOutput = (-dx/distance) * speed;
-        double yOutput = (dy/distance) * speed;
+        p = error * Constants.driveToPointGainP;
+        i += (error * dt) * Constants.driveToPointGainI;
+        d += ((error - lastError) / dt) * Constants.driveToPointGainD;
 
-        if(distance > precision) Drive(xOutput, yOutput, 0, heading);
-        else if(currentPointIndex < points.size()) currentPointIndex++;
+        double speed = Math.min(p + i + d, 1.0); // Speed factor, proportional to distance
+
+        double xOutput = (-dx/error) * speed;
+        double yOutput = (dy/error) * speed;
+
+        lastError = error;
+        lastTime = time;
+        if(error > precision) Drive(xOutput, yOutput, 0, heading);
+        else if(currentPointIndex + 1 < points.size()) currentPointIndex++;
         else recenterModules();
     }
 }

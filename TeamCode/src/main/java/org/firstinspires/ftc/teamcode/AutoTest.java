@@ -12,7 +12,9 @@ public class AutoTest extends OpMode {
     public void init() {
         //initializing all hardware
         functions.mapHardware(hardwareMap);
+        functions.newPoint(10,0,0);
         functions.newPoint(10,10,0);
+        functions.newPoint(0,10,0);
         functions.newPoint(0,0,0);
 
     }
@@ -20,7 +22,7 @@ public class AutoTest extends OpMode {
     @Override
     public void loop() {
         functions.odo.update();
-        functions.followPath();
+        functions.followPath(getRuntime());
 
        if(gamepad1.a) Constants.powerMult = 0;
        if(gamepad1.b) Constants.powerMult = 0.3;
