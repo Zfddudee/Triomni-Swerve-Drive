@@ -34,6 +34,14 @@ public class Functions {
 
     double oldTime = 0;
 
+    int currentPointIndex = 0;
+    double p = 0;
+
+    double speed = 0;
+    double xOutput = 0;
+    double yOutput = 0;
+
+
 
     //function to map hardware called on init
     public void mapHardware(HardwareMap map){
@@ -197,40 +205,72 @@ public class Functions {
         }
     }
 
+    //class for points on the path for auto pathing
     public static class PathPoint {
-        public double x, y, heading, precision;
+        public double x, y, heading, precision, waitMS;
+        public Runnable action;
 
         public PathPoint(double x, double y, double heading) {
             this.x = x;
             this.y = y;
             this.heading = heading;
             this.precision = 1;
+            this.action = null;
+            this.waitMS = 0;
         }
         public PathPoint(double x, double y, double heading, double precision) {
             this.x = x;
             this.y = y;
             this.heading = heading;
             this.precision = precision;
+            this.action = null;
+            this.waitMS = 0;
+        }
+        public PathPoint(Runnable action, double waitMS){
+            this.action = action;
+            this.waitMS = waitMS;
+        }
+        public PathPoint(double x, double y, double heading, Runnable action){
+            this.x = x;
+            this.y = y;
+            this.heading = heading;
+            this.action = action;
+            this.waitMS = 0;
+        }
+        public PathPoint(double x, double y, double heading, double precision, Runnable action){
+            this.x = x;
+            this.y = y;
+            this.heading = heading;
+            this.precision = precision;
+            this.action = action;
+            this.waitMS = 0;
         }
     }
+    //list of points made to be able to follow multiple points in series
     List<PathPoint> points = new ArrayList<>();
 
+    //
     public void newPoint(double x, double y, double heading){
         points.add(new PathPoint(x, y, heading));
     }
-    int currentPointIndex = 0;
-    double p = 0;
-    double i = 0;
-    double d = 0;
-    double lastTime = 0;
-    double lastError = 0;
+    public void newPoint(double x, double y, double heading, double precision){
+        points.add(new PathPoint(x, y, heading, precision));
+    }
+    public void newActionWait(Runnable action, double waitMS){
+        points.add(new PathPoint(action, waitMS));
+    }
+    public void newDrivingAction(double x, double y, double heading, Runnable action){
+        points.add(new PathPoint(x, y, heading, action));
+    }
+    public void newDrivingAction(double x, double y, double heading, double precision, Runnable action){
+        points.add(new PathPoint(x, y, heading, precision, action));
+    }
     public void followPath(double time){
         PathPoint currentPoint = points.get(currentPointIndex);
         double x = currentPoint.x;
         double y = currentPoint.y;
         double heading = currentPoint.heading;
         double precision = currentPoint.precision;
-
 
         double curX = odo.getPosX(DistanceUnit.INCH);
         double curY = odo.getPosY(DistanceUnit.INCH);
@@ -240,24 +280,26 @@ public class Functions {
 
         double dx = x - driveX;
         double dy = y - driveY;
-        double dt = time - oldTime;
 
         double error = Math.sqrt((dx * dx)+(dy * dy));
 
-        p = error * Constants.driveToPointGainP;
-        i += (error * dt) * Constants.driveToPointGainI;
-        d += ((error - lastError) / dt) * Constants.driveToPointGainD;
-
-        double speed = Math.min(p + i + d, 1.0); // Speed factor, proportional to distance
-
-        double xOutput = (-dx/error) * speed;
-        double yOutput = (dy/error) * speed;
-
-        lastError = error;
-        lastTime = time;
-        if(error > precision) Drive(xOutput, yOutput, 0, heading);
+        if(error > precision){
+            p = error * Constants.driveToPointGainP;
+            speed = Math.min(p + Constants.driveToPointF, 1.0); // Speed factor, proportional to distance
+            xOutput = (-dx/error) * speed;
+            yOutput = (dy/error) * speed;
+            Drive(xOutput, yOutput, 0, heading);
+        }
         else if(currentPointIndex + 1 < points.size()) currentPointIndex++;
-        else recenterModules();
+        else {
+            stop();
+            recenterModules();
+        }
+    }
+    public void stop(){
+        driveA.setPower(0);
+        driveB.setPower(0);
+        driveC.setPower(0);
     }
 }
 

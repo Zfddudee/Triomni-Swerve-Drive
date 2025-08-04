@@ -15,7 +15,7 @@ import java.util.List;
 @TeleOp(name = "Main")
 public class Main extends OpMode {
 
-
+    boolean toggle = false;
     private Functions functions = new Functions();
 
     @Override
@@ -38,12 +38,21 @@ public class Main extends OpMode {
         else if(gamepad1.dpad_left) functions.Drive(x,y,a,90);
         else if(gamepad1.dpad_down) functions.Drive(x,y,a,180);
         else if(gamepad1.dpad_right) functions.Drive(x,y,a,270);
+
+
+        if(gamepad1.right_bumper && !toggle) {
+            Constants.powerMult -= 0.02;
+            toggle = true;
+        }
+        else if(!gamepad1.right_bumper) toggle = false;
                 //telemetry read outs on screen
 //        telemetry.addData("Heading", botHeading);
 //        telemetry.addData("Heading", functions.botHeadingUsable);
 //        telemetry.addData("Heading vel", functions.headingVel);
-        telemetry.addData("X:", functions.odo.getPosX(DistanceUnit.INCH)); //forwards +x
-        telemetry.addData("Y:", functions.odo.getPosY(DistanceUnit.INCH)); //right -y
+//        telemetry.addData("X:", functions.odo.getPosX(DistanceUnit.INCH)); //forwards +x
+//        telemetry.addData("Y:", functions.odo.getPosY(DistanceUnit.INCH)); //right -y
+        telemetry.addData("Power:", Constants.powerMult); //right -y
+        telemetry.addData("Velocity:", functions.odo.getVelocity()); //right -y
         telemetry.addData("Update Time:", functions.getLoopTime(getRuntime()));
         telemetry.update();
     }
