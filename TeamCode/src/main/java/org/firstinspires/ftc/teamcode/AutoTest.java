@@ -10,18 +10,22 @@ import java.util.concurrent.TimeUnit;
 public class AutoTest extends OpMode {
     //allows code to access functions class inside of the opmode
     private Functions functions = new Functions();
+    private Functions.Path path1 = functions.new Path();
+    private Functions.Path path2 = functions.new Path();
 
     @Override
     public void init() {
         //initializing all hardware
         functions.mapHardware(hardwareMap);
         //creating points to follow
-        functions.newPoint(10,10,0);
-        functions.newActionWait(() -> {
+        path1.newPoint(10,10,0);
+        path1.newActionWait(() -> {
             functions.odo.setPosX(0, DistanceUnit.INCH);
             functions.odo.setPosY(0, DistanceUnit.INCH);
-        }, 1000);
-        functions.newPoint(-10,-10,0);
+        }, 500);
+        path1.newPoint(-10,-10,0);
+
+        path2.newPoint(0,0);
 //        functions.newPoint(0,0,0);
     }
 
@@ -30,7 +34,7 @@ public class AutoTest extends OpMode {
         //calls to update odometry every loop
         functions.odo.update();
         //follows the path that was creates on init
-        functions.followPath(getRuntime() * 1000);
+        functions.followPath(path1,getRuntime() * 1000);
         //telemetry
         telemetry.addData("X:", functions.getX()); //forwards +x
         telemetry.addData("Y:", functions.getY()); //right -y

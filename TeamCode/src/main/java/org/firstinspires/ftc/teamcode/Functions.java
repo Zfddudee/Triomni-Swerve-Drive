@@ -246,36 +246,44 @@ public class Functions {
             this.waitMS = 0;
         }
     }
-    //list of points made to be able to follow multiple points in series
-    List<PathPoint> points = new ArrayList<>();
+    // Path class (inner class inside Functions)
+    public class Path {
+        List<PathPoint> points;
 
-    //new point that will hold current heading but drive to point
-    public void newPoint(double x, double y){
-        points.add(new PathPoint(x, y, -1));
+        public Path() {
+            points = new ArrayList<>();
+        }
+
+        //new point that will hold current heading but drive to point
+        public void newPoint(double x, double y){
+            points.add(new PathPoint(x, y, -1));
+        }
+        //new point that can drive to a point and turn robot to a heading
+        public void newPoint(double x, double y, double heading){
+            points.add(new PathPoint(x, y, heading));
+        }
+        //new point to drive to point with heading and a specified precision
+        public void newPoint(double x, double y, double heading, double precision){
+            points.add(new PathPoint(x, y, heading, precision));
+        }
+        //new point to add a action where robot stops driving and waits
+        public void newActionWait(Runnable action, double waitMS){
+            points.add(new PathPoint(action, waitMS));
+        }
+        //new point where robot runs a action but keeps driving to point
+        public void newDrivingAction(double x, double y, double heading, Runnable action){
+            points.add(new PathPoint(x, y, heading, action));
+        }
+        //new action where robot runs a action but keeps driving to point but has precision added in
+        public void newDrivingAction(double x, double y, double heading, double precision, Runnable action){
+            points.add(new PathPoint(x, y, heading, precision, action));
+        }
     }
-    //new point that can drive to a point and turn robot to a heading
-    public void newPoint(double x, double y, double heading){
-        points.add(new PathPoint(x, y, heading));
-    }
-    //new point to drive to point with heading and a specified precision
-    public void newPoint(double x, double y, double heading, double precision){
-        points.add(new PathPoint(x, y, heading, precision));
-    }
-    //new point to add a action where robot stops driving and waits
-    public void newActionWait(Runnable action, double waitMS){
-        points.add(new PathPoint(action, waitMS));
-    }
-    //new point where robot runs a action but keeps driving to point
-    public void newDrivingAction(double x, double y, double heading, Runnable action){
-        points.add(new PathPoint(x, y, heading, action));
-    }
-    //new action where robot runs a action but keeps driving to point but has precision added in
-    public void newDrivingAction(double x, double y, double heading, double precision, Runnable action){
-        points.add(new PathPoint(x, y, heading, precision, action));
-    }
+
     //TODO: make it so i dont have to request time and just take it from main, make it so the PathPoint lists can be made in main so I can have Multiple Paths
-    public void followPath(double time){
-        PathPoint currentPoint = points.get(currentPointIndex);
+    public void followPath(Path path, double time){
+        PathPoint currentPoint = path.points.get(currentPointIndex);
+
         double waitTimeMs = currentPoint.waitMS;
         Runnable action = currentPoint.action;
         if(!timeLatch){
@@ -308,7 +316,7 @@ public class Functions {
                 xOutput = (-dx / error) * speed;
                 yOutput = (dy / error) * speed;
                 Drive(xOutput, yOutput, 0, heading);
-            } else if (currentPointIndex + 1 < points.size()) currentPointIndex++;
+            } else if (currentPointIndex + 1 < path.points.size()) currentPointIndex++;
             else {
                 stop();
                 recenterModules();
