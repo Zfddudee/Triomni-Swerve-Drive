@@ -2,6 +2,10 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+
+import java.util.concurrent.TimeUnit;
+
 @Autonomous(name = "AutoTest")
 public class AutoTest extends OpMode {
     //allows code to access functions class inside of the opmode
@@ -12,7 +16,12 @@ public class AutoTest extends OpMode {
         //initializing all hardware
         functions.mapHardware(hardwareMap);
         //creating points to follow
-        functions.newPoint(10,10,90);
+        functions.newPoint(10,10,0);
+        functions.newActionWait(() -> {
+            functions.odo.setPosX(0, DistanceUnit.INCH);
+            functions.odo.setPosY(0, DistanceUnit.INCH);
+        }, 1000);
+        functions.newPoint(-10,-10,0);
 //        functions.newPoint(0,0,0);
     }
 
@@ -21,10 +30,12 @@ public class AutoTest extends OpMode {
         //calls to update odometry every loop
         functions.odo.update();
         //follows the path that was creates on init
-        functions.followPath(getRuntime());
+        functions.followPath(getRuntime() * 1000);
         //telemetry
         telemetry.addData("X:", functions.getX()); //forwards +x
         telemetry.addData("Y:", functions.getY()); //right -y
+        telemetry.addData("Error:", functions.error); //right -y
+        telemetry.addData("Time Error:", functions.deltaTime); //right -y
         telemetry.addData("Update Time:", functions.getLoopTime(getRuntime()));
         telemetry.update();
     }

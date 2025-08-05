@@ -26,7 +26,7 @@ public class Functions {
     double angle = 0;
     double steeringPower = 1;
     double wheelFlip = 0;
-    boolean latch = false;
+    boolean latch = false, timeLatch = false;
     double lastHeading = 0;
     double botHeadingUsable = 0;
     double headingVel = 0;
@@ -40,8 +40,8 @@ public class Functions {
     double speed = 0;
     double xOutput = 0;
     double yOutput = 0;
-
-
+    double error = 0;
+    double targetTime = 0, deltaTime = 0;
 
     //function to map hardware called on init
     public void mapHardware(HardwareMap map){
@@ -249,52 +249,71 @@ public class Functions {
     //list of points made to be able to follow multiple points in series
     List<PathPoint> points = new ArrayList<>();
 
-    //
+    //new point that will hold current heading but drive to point
+    public void newPoint(double x, double y){
+        points.add(new PathPoint(x, y, -1));
+    }
+    //new point that can drive to a point and turn robot to a heading
     public void newPoint(double x, double y, double heading){
         points.add(new PathPoint(x, y, heading));
     }
+    //new point to drive to point with heading and a specified precision
     public void newPoint(double x, double y, double heading, double precision){
         points.add(new PathPoint(x, y, heading, precision));
     }
+    //new point to add a action where robot stops driving and waits
     public void newActionWait(Runnable action, double waitMS){
         points.add(new PathPoint(action, waitMS));
     }
+    //new point where robot runs a action but keeps driving to point
     public void newDrivingAction(double x, double y, double heading, Runnable action){
         points.add(new PathPoint(x, y, heading, action));
     }
+    //new action where robot runs a action but keeps driving to point but has precision added in
     public void newDrivingAction(double x, double y, double heading, double precision, Runnable action){
         points.add(new PathPoint(x, y, heading, precision, action));
     }
+    //TODO: make it so i dont have to request time and just take it from main, make it so the PathPoint lists can be made in main so I can have Multiple Paths
     public void followPath(double time){
         PathPoint currentPoint = points.get(currentPointIndex);
-        double x = currentPoint.x;
-        double y = currentPoint.y;
-        double heading = currentPoint.heading;
-        double precision = currentPoint.precision;
+        double waitTimeMs = currentPoint.waitMS;
+        Runnable action = currentPoint.action;
+        if(!timeLatch){
+            targetTime = time + waitTimeMs;
+            deltaTime = time - targetTime;
+            timeLatch = true;
+        }else if(deltaTime <= 0) timeLatch = false;
+        deltaTime = targetTime - time;
+        if (action != null) action.run();
 
-        double curX = odo.getPosX(DistanceUnit.INCH);
-        double curY = odo.getPosY(DistanceUnit.INCH);
+        if(deltaTime <= 0) {
+            double x = currentPoint.x;
+            double y = currentPoint.y;
+            double heading = currentPoint.heading;
+            double precision = currentPoint.precision;
 
-        double driveX = -curY;
-        double driveY = curX;
+            double curX = odo.getPosX(DistanceUnit.INCH);
+            double curY = odo.getPosY(DistanceUnit.INCH);
 
-        double dx = x - driveX;
-        double dy = y - driveY;
+            double driveX = -curY;
+            double driveY = curX;
 
-        double error = Math.sqrt((dx * dx)+(dy * dy));
+            double dx = x - driveX;
+            double dy = y - driveY;
 
-        if(error > precision){
-            p = error * Constants.driveToPointGainP;
-            speed = Math.min(p + Constants.driveToPointF, 1.0); // Speed factor, proportional to distance
-            xOutput = (-dx/error) * speed;
-            yOutput = (dy/error) * speed;
-            Drive(xOutput, yOutput, 0, heading);
-        }
-        else if(currentPointIndex + 1 < points.size()) currentPointIndex++;
-        else {
-            stop();
-            recenterModules();
-        }
+            error = Math.sqrt((dx * dx) + (dy * dy));
+            if (error > precision) {
+                p = error * Constants.driveToPointGainP;
+                speed = Math.min(p + Constants.driveToPointF, 1.0); // Speed factor, proportional to distance
+                xOutput = (-dx / error) * speed;
+                yOutput = (dy / error) * speed;
+                Drive(xOutput, yOutput, 0, heading);
+            } else if (currentPointIndex + 1 < points.size()) currentPointIndex++;
+            else {
+                stop();
+                recenterModules();
+            }
+        }else stop();
     }
     public void stop(){
         driveA.setPower(0);
