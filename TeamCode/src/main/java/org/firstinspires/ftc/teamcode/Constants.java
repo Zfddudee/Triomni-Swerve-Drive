@@ -12,4 +12,5 @@ public class Constants {
     public static double driveToPointF = lowSpeed / powerMult;
     public static double turningGainP = 0.05;
     public static double driveToPointGainP = 0.1;//0.05/powerMult 0.1 / 0.4
+    public static double defaultPrecision = 2;
 }

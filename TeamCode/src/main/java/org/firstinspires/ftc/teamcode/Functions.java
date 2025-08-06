@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 
@@ -214,7 +215,7 @@ public class Functions {
             this.x = x;
             this.y = y;
             this.heading = heading;
-            this.precision = 1;
+            this.precision = Constants.defaultPrecision;
             this.action = null;
             this.waitMS = 0;
         }
@@ -229,11 +230,13 @@ public class Functions {
         public PathPoint(Runnable action, double waitMS){
             this.action = action;
             this.waitMS = waitMS;
+            this.precision = Constants.defaultPrecision;
         }
         public PathPoint(double x, double y, double heading, Runnable action){
             this.x = x;
             this.y = y;
             this.heading = heading;
+            this.precision = Constants.defaultPrecision;
             this.action = action;
             this.waitMS = 0;
         }
@@ -279,44 +282,81 @@ public class Functions {
             points.add(new PathPoint(x, y, heading, precision, action));
         }
     }
-
-    //TODO: make it so i dont have to request time and just take it from main, make it so the PathPoint lists can be made in main so I can have Multiple Paths
+    double precision;
+    //function to follow list of points called a path point by point
     public void followPath(Path path, double time){
+
+        //retrieves the current path point that you are going to
         PathPoint currentPoint = path.points.get(currentPointIndex);
 
+        //retrieves current data from path point
         double waitTimeMs = currentPoint.waitMS;
         Runnable action = currentPoint.action;
-        if(!timeLatch){
+
+        //current x and y coordinated from odometry
+        double curX = odo.getPosX(DistanceUnit.INCH);
+        double curY = odo.getPosY(DistanceUnit.INCH);
+
+        //flips x and y so +x is right and +y is forwards
+        double driveX = -curY;
+        double driveY = curX;
+
+        //checks if there is a time value given and if there is a time value calculates the end time we want to go to and then the difference between current time and end time
+        if(!timeLatch && time != 0){
             targetTime = time + waitTimeMs;
             deltaTime = time - targetTime;
             timeLatch = true;
-        }else if(deltaTime <= 0) timeLatch = false;
-        deltaTime = targetTime - time;
-        if (action != null) action.run();
+        }
+//        else if(deltaTime <= 0 && action == null) timeLatch = false;
 
-        if(deltaTime <= 0) {
+        //calculated error in time
+        deltaTime = targetTime - time;
+
+        //Checks if action exists and if it does runs it
+        if (action != null) {
+            if(time > 0){
+                currentPoint.x = driveX;
+                currentPoint.y = driveY;
+                currentPoint.heading = odo.getHeading(AngleUnit.DEGREES);
+            }
+            action.run();
+
+        }
+
+        //if there is no time value given or if the delta time is less than or equal to 0 runs drive process otherwise keeps robot still
+        if(deltaTime <= 0 || time == 0) {
+            //retrieves variables from current path point
             double x = currentPoint.x;
             double y = currentPoint.y;
             double heading = currentPoint.heading;
-            double precision = currentPoint.precision;
+            precision = currentPoint.precision;
 
-            double curX = odo.getPosX(DistanceUnit.INCH);
-            double curY = odo.getPosY(DistanceUnit.INCH);
-
-            double driveX = -curY;
-            double driveY = curX;
-
+            //finds difference between the targeted x and y and the current x and y coordinates
             double dx = x - driveX;
             double dy = y - driveY;
 
+            //finds error distance from dx and dy
             error = Math.sqrt((dx * dx) + (dy * dy));
-            if (error > precision) {
+
+            //if the error distance is greater than the inputted precision the runs drive code
+            if(error <= precision && currentPointIndex + 1 == path.points.size()){
+                stop();
+                recenterModules();
+            }
+            else if (error > precision) { //TODO: never leaving this case and never reaching the stop case
                 p = error * Constants.driveToPointGainP;
+
                 speed = Math.min(p + Constants.driveToPointF, 1.0); // Speed factor, proportional to distance
+                //if you are not on the last point and the next point is not a wait then set speed to 1 to go full speed through points
+                if(currentPointIndex + 1 < path.points.size() && path.points.get(currentPointIndex + 1).waitMS == 0) speed = 1;
                 xOutput = (-dx / error) * speed;
                 yOutput = (dy / error) * speed;
                 Drive(xOutput, yOutput, 0, heading);
-            } else if (currentPointIndex + 1 < path.points.size()) currentPointIndex++;
+            }
+            else if (currentPointIndex + 1 < path.points.size()){
+                timeLatch = false;
+                currentPointIndex++;
+            }
             else {
                 stop();
                 recenterModules();
