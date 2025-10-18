@@ -17,7 +17,9 @@ public class AutoTest extends OpMode {
     public void init() {
         //initializing all hardware
         functions.mapHardware(hardwareMap);
+
         //creating points to follow
+        //path 1 so you can create multiple paths and chose which one to follow
         path1.newPoint(10,10,0);
         path1.newActionWait(() -> {
             functions.odo.setPosX(0, DistanceUnit.INCH);
@@ -25,7 +27,7 @@ public class AutoTest extends OpMode {
         }, 500);
         path1.newPoint(-10,-10,0);
 
-
+        //path 2 so you caould chose different path to follow
         path2.newPoint(0,25);
         path2.newPoint(-10,35);
         path2.newActionWait(() -> {}, 250);
@@ -45,7 +47,6 @@ public class AutoTest extends OpMode {
         telemetry.addData("Y:", functions.getY()); //right -y
         telemetry.addData("Speed:", functions.speed); //right -y
         telemetry.addData("Error:", functions.error); //right -y
-        telemetry.addData("Precision:", functions.precision); //right -y
         telemetry.addData("Time Error:", functions.deltaTime); //right -y
         telemetry.addData("Update Time:", functions.getLoopTime(getRuntime()));
         telemetry.update();

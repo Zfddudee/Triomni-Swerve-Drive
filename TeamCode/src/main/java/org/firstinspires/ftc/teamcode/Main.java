@@ -22,6 +22,7 @@ public class Main extends OpMode {
     public void init() {
         //initializing all hardware
         functions.mapHardware(hardwareMap);
+        Constants.powerMult = 1;
     }
 
     @Override
@@ -40,11 +41,6 @@ public class Main extends OpMode {
         else if(gamepad1.dpad_right) functions.Drive(x,y,a,270);
 
 
-        if(gamepad1.right_bumper && !toggle) {
-            Constants.powerMult -= 0.02;
-            toggle = true;
-        }
-        else if(!gamepad1.right_bumper) toggle = false;
                 //telemetry read outs on screen
 //        telemetry.addData("Heading", botHeading);
 //        telemetry.addData("Heading", functions.botHeadingUsable);

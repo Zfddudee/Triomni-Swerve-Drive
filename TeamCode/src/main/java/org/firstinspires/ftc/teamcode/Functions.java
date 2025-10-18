@@ -22,17 +22,17 @@ public class Functions {
 
 
     //publicly used variables set off the bat
-    double powerDir = 1;
-    int ticksToMove = 0;
-    double angle = 0;
-    double steeringPower = 1;
-    double wheelFlip = 0;
-    boolean latch = false, timeLatch = false;
-    double lastHeading = 0;
-    double botHeadingUsable = 0;
-    double headingVel = 0;
-    double holdDelta = 0;
+    double powerDir = 1; //Changes the dirrection of power for the wheels
+    int ticksToMove = 0; //Difference between where you are and need to be for rotating swerve modules in ticks
+    double joyStickAngle = 0; //angle of left joystick to create vector
+    double wheelFlip = 0; //flips the angle of the wheels to account for flipping
+    boolean latch = false, timeLatch = false; //locks functions once activated
+    double lastHeading = 0; //last heading once you let go of joystick for heading correction
+    double normalizedIMUBotHeading = 0; //-180 to 180 bot heading
+    double botHeadingVel = 0; //turning velocity
+    double holdDelta = 0; //angle difference between last heading and current heading
 
+    //TODO: look  over auto variables
     double oldTime = 0;
 
     int currentPointIndex = 0;
@@ -68,7 +68,7 @@ public class Functions {
         steeringMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         steeringMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        //enables bulk reads to speed up code
+        //enables auto bulk reads to speed up code
         List<LynxModule> allHubs = hardwareMap.getAll(LynxModule.class);
         for (LynxModule hub : allHubs) {
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
@@ -95,43 +95,45 @@ public class Functions {
 
     public void recenterModules(){
         steeringMotor.setTargetPosition(0);
-        steeringMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        steeringMotor.setPower(steeringPower);
+        steeringMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION); //TODO: change default to this instead of encoder
+        steeringMotor.setPower(Constants.steeringPower);
     }
-    public void Drive(double x, double y, double a, double heading) {
+    public void Drive(double joyStickX, double joyStickY, double joyStickRotation, double targetRobotHeading) {
         //updates pinpoint
         odo.update();
 
-        double botHeading = odo.getHeading(UnnormalizedAngleUnit.DEGREES);
-        botHeadingUsable = (botHeading + 360) % 360;
-        double headingRad = Math.toRadians(botHeading);
-        headingVel = Math.abs(odo.getHeadingVelocity());
+        double IMUBotHeading = odo.getHeading(UnnormalizedAngleUnit.DEGREES);
+        normalizedIMUBotHeading = (IMUBotHeading + 360) % 360;
+        double IMUBotHeadingRad = Math.toRadians(IMUBotHeading);
+
+        botHeadingVel = Math.abs(odo.getHeadingVelocity());
 
         //rotated x and y variables to allow for field centric driving
-        double rotX = x * Math.cos(headingRad) - y * Math.sin(headingRad);
-        double rotY = x * Math.sin(headingRad) + y * Math.cos(headingRad);
+        //joystick inputs transformed to robot coordinates for field centric driving
+        double rotX = joyStickX * Math.cos(IMUBotHeadingRad) - joyStickY * Math.sin(IMUBotHeadingRad);
+        double rotY = joyStickX * Math.sin(IMUBotHeadingRad) + joyStickY * Math.cos(IMUBotHeadingRad);
 
         //power for the wheels based off the magnitude of the joysticks movement then making sure it doesnt go above 1
-        double power = Math.sqrt((x * x)+(y * y));
+        double power = Math.sqrt((joyStickX * joyStickX)+(joyStickY * joyStickY)); //TODO check if these want to be rotX/Y
         if(power > 1) power = 1;
 
         //angle of the joystick calculation and then normalize angle of joystick to be in 0 to 360 degrees
-        if(x != 0 || y != 0) angle = Math.toDegrees(Math.atan2(rotX, rotY));
-        if (angle < 0) angle += 360;
+        if(joyStickX != 0 || joyStickY != 0) joyStickAngle = Math.toDegrees(Math.atan2(rotX, rotY));
+        if (joyStickAngle < 0) joyStickAngle += 360;
 
         //if joysticks are sitting still set power for steering motor to 0 to conserve power
-        if (x <= 0.05 && y <= 0.05 &&  ticksToMove < 15) steeringMotor.setPower(0);
+        if (joyStickX <= 0.05 && joyStickY <= 0.05 &&  ticksToMove < 15) steeringMotor.setPower(0);
 
         //TODO: tune heading velocity constraint, strength and fix constant spinning
         //correction so if not moving right joystick it holds heading to account for drift
-        if (Math.abs(a) <= 0.05){
-            if(!latch && headingVel < 0.2 * Constants.powerMult){
-                lastHeading = botHeadingUsable;
+        if (Math.abs(joyStickRotation) <= 0.05){
+            if(!latch && botHeadingVel < 0.2 * Constants.powerMult){
+                lastHeading = normalizedIMUBotHeading;
                 latch = true;
             }else if(latch){
-                if(heading != -1) lastHeading = heading;
-                holdDelta = normalizeTo180(lastHeading - botHeadingUsable);
-                if(Math.abs(holdDelta) > 2) a = holdDelta * Constants.turningGainP;
+                if(targetRobotHeading != -1) lastHeading = targetRobotHeading;
+                holdDelta = normalizeTo180(lastHeading - normalizedIMUBotHeading);
+                if(Math.abs(holdDelta) > 2) joyStickRotation = holdDelta * Constants.turningGainP;
             }
         }else latch = false;
 
@@ -147,7 +149,7 @@ public class Functions {
 
 
         //difference between current wheel angle and target wheel angle
-        double angleDelta = normalizeTo180(angle - flippedWheelAngle);
+        double angleDelta = normalizeTo180(joyStickAngle - flippedWheelAngle);
         wheelFlip %= 360;
 
         //if difference in angles is too large flips direction of wheels so the turning is more efficient
@@ -160,7 +162,7 @@ public class Functions {
         flippedWheelAngle = ((steeringMotor.getCurrentPosition() / (Constants.ticksPerRev * Constants.gearRatio)) * 360) + wheelFlip;
         flippedWheelAngle %= 360;
 
-        angleDelta = normalizeTo180(angle - flippedWheelAngle);
+        angleDelta = normalizeTo180(joyStickAngle - flippedWheelAngle);
 
         //calculates the target motor position to turn the wheels
         double targetPos = (angleDelta / 360) * Constants.ticksPerRev * Constants.gearRatio;
@@ -168,11 +170,12 @@ public class Functions {
 
         //turns the module to set position
         steeringMotor.setTargetPosition(ticksToMove);
-        steeringMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        steeringMotor.setPower(steeringPower);
+        steeringMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION); //TODO Change to default?
+        steeringMotor.setPower(Constants.steeringPower);
 
-        double leftWheel = (power * powerDir + a) * Constants.powerMult;
-        double rightWheel = (power * powerDir - a) * Constants.powerMult;
+        //basically tank drive power
+        double leftWheel = (power * powerDir + joyStickRotation) * Constants.powerMult;
+        double rightWheel = (power * powerDir - joyStickRotation) * Constants.powerMult;
         double middleWheel = (power * powerDir) * Constants.powerMult;
         //sets drive power on wheels depending on the direction that the swerve modules are facing to account for the turning
         //2
@@ -211,6 +214,7 @@ public class Functions {
         public double x, y, heading, precision, waitMS;
         public Runnable action;
 
+        //path point callouts to allow for usage of different variables without others
         public PathPoint(double x, double y, double heading) {
             this.x = x;
             this.y = y;
@@ -282,9 +286,8 @@ public class Functions {
             points.add(new PathPoint(x, y, heading, precision, action));
         }
     }
-    double precision;
     //function to follow list of points called a path point by point
-    public void followPath(Path path, double time){
+    public void followPath(Path path, double runtime){
 
         //retrieves the current path point that you are going to
         PathPoint currentPoint = path.points.get(currentPointIndex);
@@ -302,19 +305,20 @@ public class Functions {
         double driveY = curX;
 
         //checks if there is a time value given and if there is a time value calculates the end time we want to go to and then the difference between current time and end time
-        if(!timeLatch && time != 0){
-            targetTime = time + waitTimeMs;
-            deltaTime = time - targetTime;
+        if(!timeLatch && runtime != 0){
+            targetTime = runtime + waitTimeMs;
+            deltaTime = runtime - targetTime;
             timeLatch = true;
         }
 //        else if(deltaTime <= 0 && action == null) timeLatch = false;
 
         //calculated error in time
-        deltaTime = targetTime - time;
+        deltaTime = targetTime - runtime;
 
         //Checks if action exists and if it does runs it
         if (action != null) {
-            if(time > 0){
+            //if a action exists and there is a wait sets the x,y, and heading to current values to correct for no the empty values in the functions
+            if(runtime > 0){ //TODO change to delta time? ignore maybe.
                 currentPoint.x = driveX;
                 currentPoint.y = driveY;
                 currentPoint.heading = odo.getHeading(AngleUnit.DEGREES);
@@ -324,12 +328,12 @@ public class Functions {
         }
 
         //if there is no time value given or if the delta time is less than or equal to 0 runs drive process otherwise keeps robot still
-        if(deltaTime <= 0 || time == 0) {
+        if(deltaTime <= 0 || runtime == 0) {
             //retrieves variables from current path point
             double x = currentPoint.x;
             double y = currentPoint.y;
             double heading = currentPoint.heading;
-            precision = currentPoint.precision;
+            double precision = currentPoint.precision;
 
             //finds difference between the targeted x and y and the current x and y coordinates
             double dx = x - driveX;
@@ -338,31 +342,37 @@ public class Functions {
             //finds error distance from dx and dy
             error = Math.sqrt((dx * dx) + (dy * dy));
 
-            //if the error distance is greater than the inputted precision the runs drive code
+            //if the error distance is less than the inputted precision and on last point stops the robot and recenters modules
             if(error <= precision && currentPointIndex + 1 == path.points.size()){
                 stop();
                 recenterModules();
-            }
-            else if (error > precision) { //TODO: never leaving this case and never reaching the stop case
+            }//if error distance is greater than the inputted precision runs the drive code
+            else if (error > precision) {
+                //calculated proportional  aspect of speed based off the error times a constant
                 p = error * Constants.driveToPointGainP;
 
-                speed = Math.min(p + Constants.driveToPointF, 1.0); // Speed factor, proportional to distance
+                // Speed factor, proportional to distance with a feed forward added in as the minimum power needed to move motors so it can always move closer
+                speed = Math.min(p + Constants.driveToPointF, 1.0);
+
                 //if you are not on the last point and the next point is not a wait then set speed to 1 to go full speed through points
                 if(currentPointIndex + 1 < path.points.size() && path.points.get(currentPointIndex + 1).waitMS == 0) speed = 1;
+
+                //calculates the outputting fake "joystick" outputs to input into drive function to move robot
                 xOutput = (-dx / error) * speed;
                 yOutput = (dy / error) * speed;
+
+                //calls drive function with the output variables and has 0 for a since heading is purely controlled by the automatic heading
                 Drive(xOutput, yOutput, 0, heading);
-            }
+            }//if you are within range but not on last point goes to next point and resets the time latch to allow for new wait timer
             else if (currentPointIndex + 1 < path.points.size()){
                 timeLatch = false;
                 currentPointIndex++;
             }
-            else {
-                stop();
-                recenterModules();
-            }
+            //if delta time is still greater than 0 then robot stops and does not move
         }else stop();
     }
+
+    //function to stop all wheels keeping it from moving
     public void stop(){
         driveA.setPower(0);
         driveB.setPower(0);
